@@ -1,0 +1,40 @@
+<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="PVT SART"><meta name="theme-color" content="#1b1b1f"><title>PVT Experiment</title><link rel="stylesheet" href="style.css"></head>
+<body><div class="bar"><span>Project: <b>Attention Monitor</b></span><span id="p"></span><span id="s"></span><span><span class="pill" id="tt">Total Time: 00:00</span> <span class="pill" id="tr"></span></span></div>
+<div class="main"><div class="led" id="led">000<small> ms</small></div><div class="sub">Reaction Time</div>
+<div class="foot" id="foot">Press SPACEBAR to start.<br>Press SPACEBAR as fast as you can when the counter starts.<br>[Press 'M' for Mind-Wandering Report]<br>[Esc = หยุดทดสอบและดูผล]</div>
+<div class="modal" id="kss"><div class="box"><h2>แบบประเมินความง่วง (KSS)</h2><p>กรุณาเลือกความรู้สึกของคุณในขณะนี้</p><div class="grid" id="kg"></div><p style="margin-top:12px;font-size:11px" id="kh">ตอบด้วยปุ่ม 1-9 หรือคลิกเพื่อส่งค่าตอบ</p></div></div></div>
+<script src="common.js"></script><script src="app.js"></script><script>
+const C=PE.cfg(),rng=PE.rng(C.seed),L=['ตื่นตัวมากที่สุด','ตื่นตัวมาก','ตื่นตัว','ค่อนข้างตื่นตัว','ปกติ','เริ่มง่วงบ้าง','ง่วงแต่ไม่ต้องฝืน','ง่วงมาก','ง่วงมากที่สุด ต้องฝืนไม่ให้หลับ'];
+p.innerHTML='Participant: <b>'+C.id+'</b>';s.innerHTML='Session: <b>'+C.session+'</b>';
+L.forEach((t,i)=>{const b=document.createElement('button');b.textContent=(i+1)+'. '+t;if(i==8)b.className='w';b.onclick=()=>ans(i+1);kg.appendChild(b)});
+let st='idle',trial=0,t0,paused=0,lastKss=0,tOn,tm,raf,fs=0,afterKss=false,kShown,trials=[],events=[],tick;
+const now=()=>performance.now(),el=()=>now()-t0-paused,show=v=>led.innerHTML=String(Math.round(v)).padStart(3,'0')+'<small> ms</small>';
+setInterval(()=>{if(t0&&st!='end'&&st!='kss')tt.textContent='Total Time: '+PE.mmss(el())},250);
+function next(){if(st=='end')return;if(trial>=C.trials)return end();
+ if(el()-lastKss>=C.kss*60000&&trial>0){st='kss';kShown=now();events.push({type:'KSS_shown',trial_after:trial,ts_ms:Math.round(el())});kss.style.display='flex';return}
+ trial++;tr.textContent='Trial: '+trial+'/'+C.trials;st='isi';show(0);fs=0;const isi=PE.isi(rng,C.isiMin,C.isiMax);cur={trial,isi_ms:Math.round(isi)};
+ tm=setTimeout(()=>raf=requestAnimationFrame(()=>{tOn=now();st='stim';cur.onset_ms=Math.round(el());
+  tick=()=>{if(st!='stim')return;const d=now()-tOn;show(d);if(d>=C.isiMax+20000)return done(d,'lapse_timeout');requestAnimationFrame(tick)};tick()}),isi)}
+function done(rt,flag,src){st='fb';show(rt);trials.push({...cur,rt_ms:rt.toFixed(2),false_starts:fs,flag:flag||'',first_after_kss:afterKss?1:0,input:src||''});afterKss=false;setTimeout(next,1000)}
+function ans(v){if(st!='kss')return;const t=now();paused+=t-kShown;lastKss=el();events.push({type:'KSS_answer',trial_after:trial,score:v,rt_ms:Math.round(t-kShown),ts_ms:Math.round(el())});kss.style.display='none';afterKss=true;next()}
+function end(early){if(st=='end')return;clearTimeout(tm);cancelAnimationFrame(raf);st='end';kss.style.display='none';
+ const rts=trials.map(t=>+t.rt_ms),n=rts.length,ks=events.filter(x=>x.type=='KSS_answer').map(x=>x.score),mw=events.filter(x=>x.type=='self_caught_M').length;
+ foot.innerHTML=early?'หยุดทดสอบแล้ว':'เสร็จสิ้นการทดสอบ';
+ PE.result('ผลการทดสอบ PVT'+(early?' (หยุดก่อนกำหนด)':''),[['Trial ที่ทำ',trials.length+' / '+C.trials],['RT เฉลี่ย',PE.f1(n?rts.reduce((a,b)=>a+b)/n:NaN)],['RT มัธยฐาน',PE.f1(PE.median(rts))],['เร็วที่สุด',PE.f1(n?Math.min(...rts):NaN)],['ช้าที่สุด',PE.f1(n?Math.max(...rts):NaN)],['Lapses (RT > 500 ms)',rts.filter(x=>x>500).length],['False starts',trials.reduce((a,t)=>a+t.false_starts,0)],['คะแนน KSS',ks.length?ks.join(', '):'-'],['รายงานใจลอย (M)',mw],['Seed',C.seed]],
+  [{name:'pvt_trials_'+C.id+'.csv',rows:trials.map(r=>({participant:C.id,session:C.session,seed:C.seed,...r}))},{name:'pvt_events_'+C.id+'.csv',rows:events.map(r=>({participant:C.id,...r}))}],null,!!early)}
+const T=PE.touch,F2=T?'Tap the screen as fast as you can when the counter starts.<br>[💭 = Mind-Wandering Report]':'Press SPACEBAR as fast as you can when the counter starts.<br>[Press \'M\' for Mind-Wandering Report]<br>[Esc = หยุดทดสอบและดูผล]';
+if(T){foot.innerHTML='Tap the screen to start.<br>'+F2;kh.textContent='แตะเพื่อเลือกคำตอบ'}
+function press(src){                            // src = 'key' (Spacebar) หรือ 'touch' (แตะจอ)
+ if(st=='idle'){t0=now();PE.wake();foot.innerHTML=F2;next()}
+ else if(st=='isi')fs++;                       // false start
+ else if(st=='stim')done(now()-tOn,'',src)}
+function mind(){if(!t0)PE.toast(T?'แตะหน้าจอเพื่อเริ่มทดสอบก่อน':'กด Space เพื่อเริ่มทดสอบก่อน');
+ else if(st!='end'&&st!='kss'){events.push({type:'self_caught_M',trial,ts_ms:Math.round(el())});
+  PE.toast('✓ บันทึกรายงานใจลอยแล้ว (ครั้งที่ '+events.filter(x=>x.type=='self_caught_M').length+') — Trial '+trial)}}
+function stop(){if(t0&&st!='end')end(true)}
+addEventListener('keydown',e=>{if(e.repeat)return;if(e.code=='Escape')return stop();
+ const dg=PE.digit(e);if(st=='kss'&&dg>=1)return ans(dg);
+ if(e.code=='Space'){e.preventDefault();press('key')}
+ if(e.code=='KeyM')mind()});
+PE.touchUI(press,mind,stop);PE.busy=()=>!!t0&&st!='end';
+</script></body></html>

@@ -1,0 +1,15 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="PVT SART"><meta name="theme-color" content="#1b1b1f"><title>Tests</title></head><body style="font-family:monospace;background:#1b1b1f;color:#ddd;padding:20px"><a href="index.html" style="color:#9ab">← กลับเมนู</a><pre id="o" style="white-space:pre-wrap"></pre>
+<script src="common.js"></script><script>
+const out=[];const T=(n,c)=>out.push((c?'PASS ':'FAIL ')+n);
+const r=PE.rng(123);
+T('seed reproducible',PE.rng(5)()===PE.rng(5)());
+const s=PE.sartSeq(r,225);T('SART length 225',s.length===225);T('No-Go (3) = 25',s.filter(x=>x===3).length===25);
+let run=0,mx=0;s.forEach(x=>{run=x===3?0:run+1;mx=Math.max(mx,run)});T('max run <=15 ('+mx+')',mx<=15);
+const isi=Array.from({length:5000},()=>PE.isi(r,2000,10000)).sort((a,b)=>a-b);
+T('ISI in [2000,10000]',isi[0]>=2000&&isi.at(-1)<=10000);
+let D=0;isi.forEach((v,i)=>{const F=(v-2000)/8000;D=Math.max(D,Math.abs(F-(i+1)/5000),Math.abs(F-i/5000))});
+T('KS uniform D='+D.toFixed(4)+' < 1.63/sqrt(n) (α=0.01)='+(1.63/Math.sqrt(5000)).toFixed(4),D<1.63/Math.sqrt(5000));
+const p=PE.probePos(r,225,5,20);T('probe gap>=20 '+p,p.every((v,i)=>!i||v-p[i-1]>=20));
+const a=performance.now();let b=a;const g=[];for(let k=0;k<200;k++){const t=performance.now();while(performance.now()-t<1);g.push(performance.now()-t-1)}
+T('timer resolution (mean overshoot '+(g.reduce((x,y)=>x+y)/200).toFixed(3)+' ms)',true);
+o.textContent=out.join('\n');</script></body></html>

@@ -1,0 +1,40 @@
+<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="PVT SART"><meta name="theme-color" content="#1b1b1f"><title>SART Experiment</title><link rel="stylesheet" href="style.css"></head>
+<body><div class="bar"><span>โปรแกรมทดสอบ SART</span><span id="info"></span></div>
+<div class="main"><div class="circle"><span id="d" style="font-size:120px">+</span></div>
+<div class="foot" id="foot">กด SPACEBAR เพื่อเริ่ม<br><span id="hn"></span><br>[กด M เมื่อรู้ตัวว่าใจลอย]<br>[Esc = หยุดทดสอบและดูผล]</div>
+<div class="modal" id="pr"><div class="box"><h2>ก่อนหน้านี้คุณมีสมาธิจดจ่อกับงานอยู่หรือไม่?</h2><p id="ph">ตอบด้วยปุ่ม 1-3</p><div class="grid" style="grid-template-columns:1fr">
+<button onclick="ans(1)">1. จดจ่อกับงานเต็มที่</button><button onclick="ans(2)">2. ใจลอยนึกถึงเรื่องอื่น</button><button onclick="ans(3)">3. ใจลอยไปเรื่อยๆ</button></div></div></div></div>
+<script src="common.js"></script><script src="app.js"></script><script>
+const C=PE.cfg(),rng=PE.rng(C.seed),N=C.sartTrials,TG=1+Math.floor(rng()*9),seq=PE.sartSeq(rng,N,15,TG),HINT='Press Spacebar for all numbers (Go), DO NOT press for number <b style="color:#ff6a3d;font-size:18px">'+TG+'</b> (No-Go)',probes=PE.probePos(rng,N,C.probes,C.probeGap),SZ=[60,90,120,150,180];
+const sizes=seq.map(()=>SZ[Math.floor(rng()*5)]);
+let st='idle',i=-1,t0,paused=0,pShown,tOn,resp=null,rsrc='',trials=[],events=[];const now=()=>performance.now(),el=()=>now()-t0-paused;
+function upd(){info.innerHTML='ผู้เข้าร่วม: <b>'+C.id+'</b> &nbsp; รอบที่: <b>'+Math.max(i+1,0)+'/'+N+'</b> &nbsp; เวลา: '+PE.mmss(t0?el():0)+' &nbsp; เป้าหมาย: <span style="color:#ff6a3d">ห้ามกดเมื่อเจอเลข '+TG+'</span>'}
+setInterval(()=>st!='end'&&st!='pr'&&upd(),500);upd();
+function trial(){if(st=='end')return;i++;if(i>=N)return end();upd();const dg=seq[i];d.style.fontSize=sizes[i]+'px';resp=null;rsrc='';
+ requestAnimationFrame(()=>{d.textContent=dg;tOn=now();st='stim';const on=Math.round(el());
+  setTimeout(()=>{if(st=='end')return;d.style.fontSize='90px';d.textContent='⊗';st='mask'},250);
+  setTimeout(()=>{if(st=='end')return;const go=dg!==TG,pressed=resp!==null,ok=go?pressed:!pressed;
+   trials.push({participant:C.id,seed:C.seed,trial:i+1,nogo_digit:TG,digit:dg,font_px:sizes[i],type:go?'Go':'NoGo',pressed:pressed?1:0,rt_ms:pressed?resp.toFixed(2):'',correct:ok?1:0,onset_ms:on,input:pressed?rsrc:''});
+   if(probes.includes(i+1)){st='pr';pShown=now();events.push({type:'probe_shown',trial:i+1,ts_ms:Math.round(el())});pr.style.display='flex'}else trial()},1150)})}
+function ans(v){if(st!='pr')return;paused+=now()-pShown;events.push({type:'probe_answer',trial:i+1,answer:v,rt_ms:Math.round(now()-pShown),ts_ms:Math.round(el())});pr.style.display='none';trial()}
+function end(early){if(st=='end')return;st='end';pr.style.display='none';d.style.fontSize='90px';d.textContent='✓';
+ const G=trials.filter(t=>t.type=='Go'),N3=trials.filter(t=>t.type=='NoGo'),gp=G.filter(t=>t.pressed),com=N3.filter(t=>t.pressed).length,pa=events.filter(x=>x.type=='probe_answer').map(x=>x.answer),mw=events.filter(x=>x.type=='self_caught_M').length,pct=(a,b)=>b?(100*a/b).toFixed(1)+'%':'-';
+ foot.innerHTML=early?'หยุดทดสอบแล้ว':'เสร็จสิ้นการทดสอบ';
+ PE.result('ผลการทดสอบ SART'+(early?' (หยุดก่อนกำหนด)':''),[['รอบที่ทำ',trials.length+' / '+N],['Go ตอบถูก',gp.length+' / '+G.length+' ('+pct(gp.length,G.length)+')'],['No-Go ยับยั้งสำเร็จ',(N3.length-com)+' / '+N3.length+' ('+pct(N3.length-com,N3.length)+')'],['Commission errors (กดตอนเป็นเลข '+TG+')',com],['Omission errors (ไม่กดตอน Go)',G.length-gp.length],['RT เฉลี่ย (Go)',PE.f1(gp.length?gp.reduce((a,t)=>a+ +t.rt_ms,0)/gp.length:NaN)],['Probe-caught (จดจ่อ/ลอย/ลอยไปเรื่อย)',pa.length?pa.filter(x=>x==1).length+' / '+pa.filter(x=>x==2).length+' / '+pa.filter(x=>x==3).length:'-'],['รายงานใจลอย (M)',mw],['เลขที่ห้ามกดรอบนี้ (No-Go)',TG],['Seed',C.seed]],
+  [{name:'sart_trials_'+C.id+'.csv',rows:trials},{name:'sart_events_'+C.id+'.csv',rows:events.map(r=>({participant:C.id,...r}))}],()=>{const u=new URL(location.href);u.searchParams.set('seed',Math.floor(Math.random()*1e6));location.href=u.href},!!early)}
+hn.innerHTML=HINT;d.style.fontSize='28px';d.textContent='ห้ามกดเมื่อเจอเลข '+TG;
+const T=PE.touch,HT=HINT.replace('Press Spacebar','Tap the screen').replace('DO NOT press','DO NOT tap');
+if(T){hn.innerHTML=HT;foot.innerHTML='แตะหน้าจอเพื่อเริ่ม<br>'+hn.outerHTML+'<br>[แตะ 💭 เมื่อรู้ตัวว่าใจลอย]';ph.textContent='แตะเพื่อเลือกคำตอบ'}
+function press(src){                            // src = 'key' (Spacebar) หรือ 'touch' (แตะจอ)
+ if(st=='idle'){t0=now();PE.wake();foot.innerHTML=(T?HT+'<br>[แตะ 💭 เมื่อรู้ตัวว่าใจลอย]':HINT+'<br>[กด M เมื่อรู้ตัวว่าใจลอย]<br>[Esc = หยุดทดสอบและดูผล]');trial()}
+ else if((st=='stim'||st=='mask')&&resp===null){resp=now()-tOn;rsrc=src}}
+function mind(){if(!t0)PE.toast(T?'แตะหน้าจอเพื่อเริ่มทดสอบก่อน':'กด Space เพื่อเริ่มทดสอบก่อน');
+ else if(st!='end'&&st!='pr'){events.push({type:'self_caught_M',trial:i+1,ts_ms:Math.round(el())});
+  PE.toast('✓ บันทึกรายงานใจลอยแล้ว (ครั้งที่ '+events.filter(x=>x.type=='self_caught_M').length+') — รอบที่ '+(i+1))}}
+function stop(){if(t0&&st!='end')end(true)}
+addEventListener('keydown',e=>{if(e.repeat)return;if(e.code=='Escape')return stop();
+ const dg=PE.digit(e);if(st=='pr'&&dg>=1&&dg<=3)return ans(dg);
+ if(e.code=='Space'){e.preventDefault();press('key')}
+ if(e.code=='KeyM')mind()});
+PE.touchUI(press,mind,stop);PE.busy=()=>!!t0&&st!='end';
+</script></body></html>

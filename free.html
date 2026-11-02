@@ -1,0 +1,13 @@
+<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="PVT SART"><meta name="theme-color" content="#1b1b1f"><title>PVT & SART</title><link rel="stylesheet" href="style.css"></head>
+<body class="scroll"><div class="main"><form class="card" id="f"><a href="admin.html" style="color:#9ab;font-size:14px;text-decoration:none">← กลับหน้าผู้ใหญ่</a><h2 style="margin:0">ทดสอบแบบกำหนดเอง</h2><p style="margin:0;color:#999;font-size:13px">ผลจากหน้านี้ไม่นับดาว และไม่ถูกเก็บในประวัติของแอป ต้องกดดาวน์โหลด CSV เองหลังจบ</p>
+<label>รหัสผู้เข้าร่วม<input name="id" value="ID_7421"></label>
+<label>Session<input name="session" value="3 (Day 1)"></label>
+<label>Seed (เว้นว่าง = สุ่ม)<input name="seed" inputmode="numeric" placeholder="82941"></label>
+<label>PVT: จำนวน trial<input name="trials" inputmode="numeric" value="60"></label>
+<label>PVT: KSS ทุก (นาที)<input name="kss" inputmode="numeric" value="4"></label>
+<label>SART: จำนวนรอบ<input name="sart_trials" inputmode="numeric" value="225"></label>
+<label>SART: จำนวนครั้งที่ถามสมาธิ (probe)<input name="probes" inputmode="numeric" value="5"></label>
+<button class="btn" formaction="pvt.html">เริ่ม PVT</button><button class="btn" formaction="sart.html">เริ่ม SART</button>
+<a class="btn" href="tests.html">Unit tests</a>
+<a class="btn" href="validation.html">รายงานตรวจสอบ (Chi-square / Timing)</a></form></div>
+<script src="common.js"></script><script>f.addEventListener('submit',()=>{for(const i of f.querySelectorAll('input'))if(!i.value)i.disabled=true})</script></body></html>

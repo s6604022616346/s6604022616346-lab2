@@ -1,0 +1,55 @@
+<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="PVT SART"><meta name="theme-color" content="#F2F7FB">
+<title>ภารกิจวันนี้</title><link rel="stylesheet" href="app.css"></head>
+<body><div class="wrap">
+<header class="top"><button class="who" id="who" hidden></button><a class="adult" href="admin.html">สำหรับผู้ใหญ่</a></header>
+<main id="app"></main></div>
+<div class="sheet" id="sheet" hidden><div class="panel" id="panel" role="dialog" aria-modal="true"></div></div>
+<div class="toast2" id="t2"></div>
+<script src="common.js"></script><script src="app.js"></script><script>
+const A=APP,S=A.S,$=s=>document.querySelector(s),
+ esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])),
+ toast=m=>{const t=$('#t2');t.textContent=m;t.classList.add('show');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('show'),2200)};
+const TH=['อา','จ','อ','พ','พฤ','ศ','ส'];
+
+function render(){
+ const app=$('#app');
+ if(!S.profiles.length){$('#who').hidden=true;
+  app.innerHTML='<div class="welcome"><div class="face">🥚</div><h1>ยินดีต้อนรับ</h1><p>ให้ผู้ใหญ่ตั้งค่าและเพิ่มชื่อผู้เล่นก่อนเริ่มใช้งาน</p><a class="bigbtn" href="admin.html" style="text-decoration:none">ตั้งค่าครั้งแรก</a></div>';return}
+ if(!A.profile()){S.current=S.profiles[0].id;A.save()}
+ const pr=A.profile(),p=A.prog(pr.id),today=A.day(),log=p.log[today]||{},st=A.stage(p.stars),streak=A.streak(p);
+ const w=$('#who');w.hidden=false;w.innerHTML='<span class="av">'+pr.avatar+'</span>'+esc(pr.name)+(S.profiles.length>1?' <span class="caret">▼</span>':'');
+ const C=2*Math.PI*54,pct=st.next?(p.stars-st.s[0])/(st.next[0]-st.s[0]):1;
+ let h='<section class="nest" aria-label="นกฮูกของฉัน"><div class="owl"><svg viewBox="0 0 120 120"><circle class="trk" cx="60" cy="60" r="54"/><circle class="prg" cx="60" cy="60" r="54" stroke-dasharray="'+C+'" stroke-dashoffset="'+C*(1-pct)+'"/></svg><div class="face">'+st.s[1]+'</div></div>'+
+  '<p class="stage">'+st.s[2]+'</p><p class="next">'+(st.next?'อีก '+(st.next[0]-p.stars)+' ⭐ จะโตเป็น'+st.next[2]:'โตเต็มที่แล้ว เก่งมาก!')+'</p>'+
+  '<div class="stats"><span class="stat">⭐ '+p.stars+'<small>ดาว</small></span><span class="stat">🔥 '+streak+'<small>วันติด</small></span></div></section>';
+ h+='<div class="week" aria-label="7 วันล่าสุด">';
+ for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);const k=A.day(d),l=p.log[k]||{},any=A.enabled().some(m=>l[m]);
+  h+='<div class="'+(A.dayDone(p,k)?'full':any?'part':'')+(i===0?' today':'')+'"><span>'+(i===0?'วันนี้':TH[d.getDay()])+'</span><i></i></div>'}
+ h+='</div><h2 class="sec">ภารกิจวันนี้</h2><div class="missions">';
+ const en=A.enabled();
+ en.forEach(k=>{const m=A.MISSIONS[k],done=!!log[k];
+  h+='<button class="mission'+(done?' done':'')+'" data-m="'+k+'"><span class="tick">'+(done?'✓':'')+'</span><span><b>'+m.icon+' '+m.name+'</b><span>ประมาณ '+m.min+' นาที</span></span><span class="rw">'+(done?'เสร็จแล้ว':'+'+A.STAR.mission+' ⭐')+'</span></button>'});
+ h+='</div><p class="hint">'+(!en.length?'ยังไม่มีภารกิจ ให้ผู้ใหญ่เปิดภารกิจในหน้าสำหรับผู้ใหญ่':A.dayDone(p,today)?'วันนี้ครบทุกภารกิจแล้ว พรุ่งนี้มาเก็บดาวต่อนะ':'ทำครบทุกภารกิจวันนี้ รับโบนัสอีก +'+A.STAR.bonus+' ⭐')+'</p>';
+ h+='<h2 class="sec">สติกเกอร์ของฉัน ('+p.stickers.length+'/'+A.STICKERS.length+')</h2><div class="stickers">';
+ A.STICKERS.forEach(s=>{const on=p.stickers.includes(s.id);h+='<button class="sticker'+(on?'':' lock')+'" data-h="'+esc(on?s.n:s.h)+'"><div class="e">'+s.e+'</div><div class="n">'+(on?s.n:'ยังไม่ได้')+'</div></button>'});
+ app.innerHTML=h+'</div>';
+ app.querySelectorAll('.mission').forEach(b=>b.onclick=()=>openMission(b.dataset.m));
+ app.querySelectorAll('.sticker').forEach(b=>b.onclick=()=>toast(b.classList.contains('lock')?'วิธีได้: '+b.dataset.h:b.dataset.h));
+}
+const sheet=$('#sheet'),panel=$('#panel'),close=()=>sheet.hidden=true;
+sheet.onclick=e=>{if(e.target===sheet&&!sheet.dataset.lock)close()};
+function openMission(k){const m=A.MISSIONS[k],pr=A.profile(),done=!!(A.prog(pr.id).log[A.day()]||{})[k];
+ if(done&&!S.settings.replay)return toast('ภารกิจนี้ทำเสร็จแล้ววันนี้ พรุ่งนี้มาเล่นใหม่นะ');
+ panel.innerHTML='<h3>'+m.icon+' '+m.name+'</h3><p class="sub">ใช้เวลาประมาณ '+m.min+' นาที หาที่เงียบ ๆ ก่อนเริ่ม'+(done?' (เล่นซ้ำ ไม่ได้ดาวเพิ่ม)':'')+'</p>'+
+  '<ol class="how">'+m.how.map(x=>'<li>'+x+'</li>').join('')+'</ol><button class="bigbtn" id="go">พร้อมแล้ว เริ่มเลย</button><button class="bigbtn ghost" id="no">ยังก่อน</button>';
+ sheet.dataset.lock='';sheet.hidden=false;$('#go').onclick=()=>location.href=A.missionUrl(k,pr.id);$('#no').onclick=close;$('#go').focus()}
+function openPicker(force){
+ panel.innerHTML='<h3>ใครกำลังเล่นอยู่?</h3><p class="sub">แตะที่ชื่อของตัวเอง</p><div class="people">'+
+  S.profiles.map(p=>'<button class="person'+(p.id===S.current?' on':'')+'" data-id="'+p.id+'"><span class="av">'+p.avatar+'</span>'+esc(p.name)+'</button>').join('')+'</div>';
+ if(force)sheet.dataset.lock='1';else delete sheet.dataset.lock;
+ sheet.hidden=false;panel.querySelectorAll('.person').forEach(b=>b.onclick=()=>{S.current=b.dataset.id;A.save();try{sessionStorage.setItem('picked','1')}catch(e){}close();render()})}
+$('#who').onclick=()=>{if(S.profiles.length>1)openPicker(false)};
+render();
+let picked=false;try{picked=!!sessionStorage.getItem('picked')}catch(e){}
+if(S.profiles.length>1&&!picked)openPicker(true);
+</script></body></html>

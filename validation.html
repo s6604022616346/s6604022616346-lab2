@@ -1,0 +1,62 @@
+<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="PVT SART"><meta name="theme-color" content="#1b1b1f"><title>Validation Report</title><link rel="stylesheet" href="style.css">
+<style>body{display:block;height:auto;padding:24px;max-width:900px;margin:auto}h1{font-size:22px}h2{margin:26px 0 6px;font-size:17px}p.n{color:#999;font-size:13px;margin:0 0 8px}
+table{width:100%;border-collapse:collapse;font-size:13.5px}td,th{padding:7px 6px;border-bottom:1px solid #3a3b42;text-align:left;vertical-align:top}th{color:#999;font-weight:600}.ok{color:#66bb6a;font-weight:700}.no{color:#ef5350;font-weight:700}.in{color:#90a4ae;font-weight:700}@media (max-width:600px){body{padding:16px}table{font-size:12.5px}td,th{padding:6px 4px}}</style></head>
+<body><h1>รายงานตรวจสอบอัลกอริทึมสุ่มและความแม่นยำการจับเวลา</h1>
+<p class="n">กด “เริ่มตรวจสอบ” แล้วรอประมาณ 20–30 วินาที (ระหว่างวัดเวลา ควรปิดแท็บอื่นและไม่ขยับหน้าต่าง)</p>
+<button class="btn" id="go">▶ เริ่มตรวจสอบ</button> <button class="btn" id="dl" disabled>⬇ ดาวน์โหลดผล CSV</button> <a class="btn" href="index.html">กลับเมนู</a>
+<h2>A. การตรวจสอบอัลกอริทึมสุ่มทางสถิติ (ระดับนัยสำคัญ α = 0.05)</h2><table id="A"></table>
+<h2>B. การวัดความแม่นยำการจับเวลา (timing latency / jitter)</h2><table id="B"></table><p class="n" id="env"></p>
+<script src="common.js"></script><script>
+// ---------- ฟังก์ชันสถิติ ----------
+const lg=x=>{const c=[76.18009172947146,-86.50532032941677,24.01409824083091,-1.231739572450155,0.1208650973866179e-2,-0.5395239384953e-5];let y=x,t=x+5.5;t-=(x+.5)*Math.log(t);let s=1.000000000190015;for(const k of c)s+=k/++y;return -t+Math.log(2.5066282746310005*s/x)};
+const gp=(a,x)=>{if(x<=0)return 0;const g=lg(a);
+ if(x<a+1){let ap=a,sum=1/a,del=sum;for(let n=0;n<500;n++){ap++;del*=x/ap;sum+=del;if(Math.abs(del)<Math.abs(sum)*1e-14)break}return sum*Math.exp(-x+a*Math.log(x)-g)}
+ let b=x+1-a,c=1e300,d=1/b,h=d;for(let i=1;i<500;i++){const an=-i*(i-a);b+=2;d=an*d+b;if(Math.abs(d)<1e-300)d=1e-300;c=b+an/c;if(Math.abs(c)<1e-300)c=1e-300;d=1/d;const del=d*c;h*=del;if(Math.abs(del-1)<1e-14)break}
+ return 1-Math.exp(-x+a*Math.log(x)-g)*h};
+const chiP=(x,k)=>Math.max(0,Math.min(1,1-gp(k/2,x/2)));
+const chi=(o,e)=>o.reduce((s,v,i)=>s+(v-e[i])**2/e[i],0);
+const ksP=(D,n)=>{const l=(Math.sqrt(n)+.12+.11/Math.sqrt(n))*D;let s=0;for(let j=1;j<100;j++)s+=2*(j%2?1:-1)*Math.exp(-2*j*j*l*l);return Math.max(0,Math.min(1,s))};
+const mean=a=>a.reduce((x,y)=>x+y,0)/a.length,sd=a=>{const m=mean(a);return Math.sqrt(a.reduce((s,v)=>s+(v-m)**2,0)/(a.length-1))};
+const pct=(a,q)=>[...a].sort((x,y)=>x-y)[Math.min(a.length-1,Math.floor(q*a.length))];
+const f=(v,d=2)=>v.toFixed(d),rows=[];
+function add(tb,name,val,crit,res){const T=document.getElementById(tb),B=T.tBodies[0]||T.appendChild(document.createElement('tbody')),r=B.insertRow();
+ [name,val,crit].forEach(t=>r.insertCell().textContent=t);const c=r.insertCell();c.textContent=res==='info'?'ข้อมูล':res?'ผ่าน':'ไม่ผ่าน';c.className=res==='info'?'in':res?'ok':'no';
+ rows.push({section:tb,test:name,value:val,criterion:crit,result:c.textContent})}
+for(const t of['A','B']){const h=document.getElementById(t).createTHead().insertRow();['รายการ','ค่าที่ได้','เกณฑ์','ผล'].forEach(x=>{const c=document.createElement('th');c.textContent=x;h.appendChild(c)})}
+// ---------- A. สถิติ ----------
+function partA(){const M=2000,master=PE.rng(2026),tgC=Array(9).fill(0),posC=Array(9).fill(0);let bad=0,first=null;
+ for(let s=0;s<M;s++){const seed=Math.floor(master()*1e9),rng=PE.rng(seed),TG=1+Math.floor(rng()*9),q=PE.sartSeq(rng,225,15,TG);tgC[TG-1]++;
+  q.forEach((d,i)=>{if(d===TG)posC[Math.floor(i/25)]++});
+  let run=0;q.forEach(d=>{run=d===TG?0:run+1;if(run>15)bad++});if(!first)first={q,TG}}
+ // A1 สัดส่วน Go/No-Go ของลำดับหนึ่งชุด
+ const ng=first.q.filter(d=>d===first.TG).length,x1=chi([225-ng,ng],[200,25]);
+ add('A','A1 Chi-square สัดส่วน Go:No-Go ในลำดับ 225 รอบ (df=1)','Go='+(225-ng)+', No-Go='+ng+'; χ²='+f(x1,3)+', p='+f(chiP(x1,1),3),'p > 0.05 (คาด 200:25 = 8:1)',chiP(x1,1)>.05);
+ // A2 การสุ่มเลข No-Go ให้เท่ากันทั้ง 9 เลข
+ const x2=chi(tgC,Array(9).fill(M/9));add('A','A2 Chi-square การสุ่มเลขห้ามกด (1–9) จาก '+M+' เซสชัน (df=8)','χ²='+f(x2,2)+', p='+f(chiP(x2,8),3)+'; นับ='+tgC.join(','),'p > 0.05 (ทุกเลขมีโอกาสเท่ากัน)',chiP(x2,8)>.05);
+ // A3 ตำแหน่งของ No-Go กระจายสม่ำเสมอ (9 ช่วง ช่วงละ 25 รอบ)
+ const tot=posC.reduce((a,b)=>a+b),x3=chi(posC,Array(9).fill(tot/9));add('A','A3 Chi-square ตำแหน่ง No-Go แบ่ง 9 ช่วง ช่วงละ 25 รอบ (df=8)','χ²='+f(x3,2)+', p='+f(chiP(x3,8),3)+'; นับ='+posC.join(','),'p > 0.05 (ไม่มีช่วงใดถูกเอนเอียง)',chiP(x3,8)>.05);
+ add('A','A4 ความยาว run สูงสุดของเลขที่ไม่ใช่ No-Go ติดกัน (ทุก '+M+' ลำดับ)','จำนวนการละเมิด = '+bad,'= 0 (ไม่เกิน 15)',bad===0);
+ // A5 KS ISI
+ const n=5000,r=PE.rng(99),u=Array.from({length:n},()=>PE.isi(r,2000,10000)).sort((a,b)=>a-b);let D=0;u.forEach((v,i)=>{const F=(v-2000)/8000;D=Math.max(D,Math.abs(F-(i+1)/n),Math.abs(F-i/n))});
+ add('A','A5 Kolmogorov–Smirnov ISI ~ Uniform(2000, 10000) ms (n='+n+')','D='+f(D,4)+', p='+f(ksP(D,n),3)+'; ช่วง ['+f(u[0],0)+', '+f(u[n-1],0)+']','p > 0.05 และอยู่ในช่วงที่กำหนด',ksP(D,n)>.05&&u[0]>=2000&&u[n-1]<=10000)}
+// ---------- B. เวลา ----------
+const sleep=ms=>new Promise(r=>setTimeout(r,ms)),frame=()=>new Promise(r=>requestAnimationFrame(r));
+async function timer(d,n){const e=[];for(let i=0;i<n;i++){const t=performance.now();await sleep(d);e.push(performance.now()-t-d)}return e}
+async function partB(){
+ let res=Infinity;const tEnd=performance.now()+200;for(let i=0;i<20000&&performance.now()<tEnd;i++){const a=performance.now();let b=a;while(b===a)b=performance.now();res=Math.min(res,b-a)}
+ add('B','B1 ความละเอียดของ performance.now()',f(res*1000,1)+' µs','ข้อมูล (เบราว์เซอร์อาจปัดค่าเพื่อความปลอดภัย)','info');
+ for(const[d,n]of[[250,20],[900,10]]){const e=await timer(d,n);
+  add('B','B2 setTimeout '+d+' ms ('+n+' ครั้ง) — ความคลาดเคลื่อน: เฉลี่ย / SD(jitter) / สูงสุด',f(mean(e))+' / '+f(sd(e))+' / '+f(Math.max(...e))+' ms','เฉลี่ย < 5 ms และ SD < 5 ms',mean(e)<5&&sd(e)<5)}
+ const fr=[];let last=await frame();for(let i=0;i<120;i++){const t=await frame();fr.push(t-last);last=t}
+ add('B','B3 ช่วงเวลาระหว่างเฟรมของจอ (120 เฟรม) — เฉลี่ย / SD / สูงสุด',f(mean(fr))+' / '+f(sd(fr))+' / '+f(Math.max(...fr))+' ms (≈'+f(1000/mean(fr),0)+' Hz)','ข้อมูล (RT มีความไม่แน่นอนได้ไม่เกิน 1 เฟรม)','info');
+ const on=[];for(let i=0;i<20;i++){const t=performance.now();await sleep(300);await new Promise(r=>requestAnimationFrame(()=>{on.push(performance.now()-t-300);r()}))}
+ add('B','B4 หน่วงจาก “ครบ ISI” ถึง “ภาพสิ่งเร้าถูกวาด” (ที่ใช้เริ่มจับ RT) — เฉลี่ย / SD / สูงสุด',f(mean(on))+' / '+f(sd(on))+' / '+f(Math.max(...on))+' ms','สูงสุด < 40 ms (ตัวเลขนี้ไม่ถูกรวมใน RT เพราะเริ่มจับที่เฟรมวาด)',Math.max(...on)<40);
+ const kl=[];const h=()=>kl.push(performance.now()-window._t);addEventListener('keydown',h);
+ for(let i=0;i<300;i++){window._t=performance.now();dispatchEvent(new KeyboardEvent('keydown',{code:'Space',key:' '}))}removeEventListener('keydown',h);
+ add('B','B5 หน่วงของ event keydown ในซอฟต์แวร์ (300 ครั้ง; จำลองด้วยโค้ด) — เฉลี่ย / สูงสุด',f(mean(kl),3)+' / '+f(Math.max(...kl),3)+' ms','เฉลี่ย < 1 ms',mean(kl)<1)}
+document.getElementById('go').onclick=async function(){this.disabled=true;this.textContent='กำลังตรวจสอบ…';
+ document.getElementById('A').tBodies[0]?.remove();document.getElementById('B').tBodies[0]?.remove();rows.length=0;
+ await sleep(50);partA();await partB();this.textContent='↻ ตรวจสอบอีกครั้ง';this.disabled=false;dl.disabled=false;
+ env.textContent='เบราว์เซอร์: '+navigator.userAgent+' | วันที่ตรวจสอบ: '+new Date().toLocaleString('th-TH')+' | หมายเหตุ: ค่าในส่วน B วัดความคลาดเคลื่อนของซอฟต์แวร์/เบราว์เซอร์ ไม่รวมความหน่วงของคีย์บอร์ดและจอภาพ (ต้องใช้อุปกรณ์วัดภายนอก)'};
+dl.onclick=()=>PE.download('validation_report.csv',rows);
+</script></body></html>

@@ -1,0 +1,97 @@
+<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="theme-color" content="#F2F7FB">
+<title>สำหรับผู้ใหญ่</title><link rel="stylesheet" href="app.css"></head>
+<body class="admin"><div class="wrap" id="root"></div><div class="toast2" id="t2"></div>
+<script src="common.js"></script><script src="app.js"></script><script>
+const A=APP,S=A.S,$=s=>document.querySelector(s),root=$('#root'),
+ esc=t=>String(t??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])),
+ toast=m=>{const t=$('#t2');t.textContent=m;t.classList.add('show');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('show'),2600)};
+let unlocked=false;try{unlocked=sessionStorage.getItem('adult')==='1'}catch(e){}
+
+// ---------- PIN ----------
+function gate(){const first=!S.pin;
+ root.innerHTML='<div class="pinpad"><h1>'+(first?'ตั้ง PIN ผู้ใหญ่':'ใส่ PIN ผู้ใหญ่')+'</h1><p class="lead">'+(first?'ใช้ PIN นี้เข้าหน้าตั้งค่า เด็กจะเข้ามาแก้ค่าหรือดูผลไม่ได้':'หน้านี้สำหรับผู้วิจัย ผู้ปกครอง หรือครู')+'</p>'+
+  '<input id="p1" type="password" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="••••" aria-label="PIN">'+(first?'<input id="p2" type="password" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="ใส่อีกครั้ง" aria-label="ยืนยัน PIN">':'')+
+  '<div class="err" id="er"></div><button class="bigbtn" id="ok">'+(first?'ตั้ง PIN':'เข้าสู่หน้าผู้ใหญ่')+'</button><a class="bigbtn ghost" href="index.html" style="text-decoration:none">กลับหน้าหลัก</a></div>';
+ const p1=$('#p1');p1.focus();
+ const go=()=>{const v=p1.value.trim();
+  if(first){if(!/^\d{4,8}$/.test(v))return $('#er').textContent='PIN ต้องเป็นตัวเลข 4–8 หลัก';if(v!==$('#p2').value.trim())return $('#er').textContent='PIN สองช่องไม่ตรงกัน';S.pin=A.hash(v);A.save()}
+  else if(A.hash(v)!==S.pin){p1.value='';return $('#er').textContent='PIN ไม่ถูกต้อง'}
+  unlocked=true;try{sessionStorage.setItem('adult','1')}catch(e){}main()};
+ $('#ok').onclick=go;root.querySelectorAll('input').forEach(i=>i.onkeydown=e=>{if(e.key==='Enter')go()})}
+
+// ---------- หน้าหลักผู้ใหญ่ ----------
+async function main(){const st=S.settings,native=typeof PE!=='undefined'&&PE.native;
+ let h='<header class="top"><a class="adult" href="index.html">← กลับหน้าหลัก</a><button class="btn2" id="lock">ล็อก</button></header><h1>สำหรับผู้ใหญ่</h1><p class="lead">ตั้งค่าผู้เล่น ภารกิจ และส่งออกข้อมูลผลทดสอบ</p>';
+ // ผู้เล่น
+ h+='<section class="block plist"><h2>ผู้เล่น</h2>'+(S.profiles.length?S.profiles.map(p=>{const g=A.prog(p.id);
+   return'<div class="row"><label><span class="av">'+p.avatar+'</span><b>'+esc(p.name)+'</b><small>รหัส '+esc(p.code)+'  ⭐ '+g.stars+'  ทำภารกิจแล้ว '+g.missions+' ครั้ง</small></label><button class="btn2" data-edit="'+p.id+'">แก้ไข</button></div>'}).join(''):'<p class="lead">ยังไม่มีผู้เล่น เพิ่มคนแรกได้เลย</p>')+
+  '<div class="acts2"><button class="btn2 pri" id="add">+ เพิ่มผู้เล่น</button></div><div id="pform"></div></section>';
+ // ภารกิจ
+ h+='<section class="block"><h2>ภารกิจรายวัน</h2>'+
+  '<div class="row"><label><b>⏱️ เกมจับเวลา (PVT)</b></label><input class="sw" type="checkbox" data-k="pvt.on"'+(st.pvt.on?' checked':'')+'></div>'+
+  '<div class="row"><label>จำนวน trial<small>60 trial ใช้เวลาประมาณ 7 นาที</small></label><input type="number" min="5" max="200" data-k="pvt.trials" value="'+st.pvt.trials+'"></div>'+
+  '<div class="row"><label>ถามความง่วง (KSS) ทุกกี่นาที</label><input type="number" min="1" max="30" step="0.5" data-k="pvt.kss" value="'+st.pvt.kss+'"></div>'+
+  '<div class="row"><label><b>🔢 เกมห้ามแตะ (SART)</b></label><input class="sw" type="checkbox" data-k="sart.on"'+(st.sart.on?' checked':'')+'></div>'+
+  '<div class="row"><label>จำนวนรอบ<small>225 รอบใช้เวลาประมาณ 6 นาที</small></label><input type="number" min="18" max="450" data-k="sart.trials" value="'+st.sart.trials+'"></div>'+
+  '<div class="row"><label>จำนวนครั้งที่ถามสมาธิ (probe)</label><input type="number" min="0" max="20" data-k="sart.probes" value="'+st.sart.probes+'"></div>'+
+  '<div class="row"><label><b>ให้เล่นซ้ำในวันเดียวกันได้</b><small>เล่นซ้ำจะเก็บข้อมูลด้วย แต่ไม่ได้ดาวเพิ่ม</small></label><input class="sw" type="checkbox" data-k="replay"'+(st.replay?' checked':'')+'></div>'+
+  '<p class="lead" style="margin-top:8px">ดาวให้เมื่อทำภารกิจครบ ('+A.STAR.mission+' ⭐ ต่อภารกิจ, ครบทั้งวัน +'+A.STAR.bonus+') ไม่ขึ้นกับความเร็วหรือความแม่น</p></section>';
+ // แจ้งเตือน
+ h+='<section class="block"><h2>แจ้งเตือนทุกวัน</h2>'+(native?
+  '<div class="row"><label><b>เปิดแจ้งเตือน</b><small>เหมาะกับเครื่องที่ใช้คนเดียว</small></label><input class="sw" type="checkbox" data-k="remind.on"'+(st.remind.on?' checked':'')+'></div><div class="row"><label>เวลา</label><input type="time" data-k="remind.time" value="'+st.remind.time+'"></div>':
+  '<p class="lead">แจ้งเตือนใช้ได้เฉพาะในแอป Android ถ้าใช้ผ่านเว็บ ให้ตั้งนาฬิกาปลุกในเครื่องแทน</p>')+'</section>';
+ // ข้อมูล
+ const all=(await A.DB.all().catch(()=>[])).sort((a,b)=>a.ended<b.ended?1:-1);
+ h+='<section class="block"><h2>ข้อมูลผลทดสอบ</h2><p class="lead">เก็บไว้ทั้งหมด '+all.length+' รอบ'+(native?' (แอปบันทึก CSV แต่ละรอบลง Documents/PvtSart ให้อัตโนมัติด้วย)':'')+'</p>';
+ if(all.length){h+='<table class="tbl"><tr><th>วันที่</th><th>ผู้เล่น</th><th>ภารกิจ</th><th>ผล</th></tr>'+all.slice(0,30).map(s=>{const k=Object.fromEntries(s.summary||[]),key=s.mission==='pvt'?'RT มัธยฐาน':'No-Go ยับยั้งสำเร็จ';
+   return'<tr><td>'+esc(s.date)+'<br><small>'+esc((s.ended||'').slice(11,16))+'</small></td><td>'+esc(s.name)+'<br><small>'+esc(s.participant)+'</small></td><td>'+s.mission.toUpperCase()+' <span class="tag'+(s.completed?'':' no')+'">'+(s.completed?'ครบ':'หยุดก่อน')+'</span></td><td><small>'+esc(key)+'</small><br>'+esc(k[key]??'-')+'</td></tr>'}).join('')+'</table>'+(all.length>30?'<p class="lead">แสดง 30 รอบล่าสุด ไฟล์ส่งออกมีครบทุกรอบ</p>':'')}
+ h+='<div class="acts2"><button class="btn2 pri" id="exp"'+(all.length?'':' disabled')+'>ส่งออก CSV ทั้งหมด</button><button class="btn2 del" id="wipe"'+(all.length?'':' disabled')+'>ลบข้อมูลผลทดสอบทั้งหมด</button></div></section>';
+ // อื่น ๆ
+ h+='<section class="block links"><h2>เครื่องมืออื่น</h2><a href="free.html">ทดสอบแบบกำหนดเอง (ไม่นับดาว)</a><a href="validation.html">รายงานตรวจสอบอัลกอริทึมและการจับเวลา</a><a href="tests.html">Unit tests</a><div class="acts2"><button class="btn2" id="pin">เปลี่ยน PIN</button></div></section>';
+ root.innerHTML=h;
+ $('#lock').onclick=()=>{try{sessionStorage.removeItem('adult')}catch(e){}location.href='index.html'};
+ $('#add').onclick=()=>pform();root.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>pform(b.dataset.edit));
+ root.querySelectorAll('[data-k]').forEach(i=>i.onchange=async()=>{const[a,b]=i.dataset.k.split('.'),v=i.type==='checkbox'?i.checked:i.type==='number'?+i.value:i.value;
+  if(i.type==='number'&&!(v>=+i.min&&v<=+i.max)){toast('ค่าต้องอยู่ระหว่าง '+i.min+'–'+i.max);i.value=b?st[a][b]:st[a];return}
+  if(b)st[a][b]=v;else st[a]=v;A.save();
+  if(a==='remind'){const r=await A.schedule().catch(e=>({ok:false,why:e.message}));
+   if(!r.ok){toast(r.why==='denied'?'ยังไม่ได้อนุญาตแจ้งเตือน เปิดได้ที่การตั้งค่าแอปในเครื่อง':'ตั้งแจ้งเตือนไม่สำเร็จ');if(r.why==='denied'){st.remind.on=false;A.save();main()}}
+   else toast(st.remind.on?'จะแจ้งเตือนทุกวันเวลา '+st.remind.time+' น.':'ปิดแจ้งเตือนแล้ว')}else toast('บันทึกแล้ว')});
+ $('#exp').onclick=()=>exportAll(all);
+ $('#wipe').onclick=async()=>{if(!confirm('ลบข้อมูลผลทดสอบทั้งหมด '+all.length+' รอบ?\nควรส่งออก CSV เก็บไว้ก่อน ลบแล้วกู้คืนไม่ได้'))return;
+  if(!confirm('ยืนยันอีกครั้ง: ลบข้อมูลทั้งหมด'))return;await A.DB.delWhere(()=>true);toast('ลบข้อมูลผลทดสอบแล้ว');main()};
+ $('#pin').onclick=()=>{if(confirm('ตั้ง PIN ใหม่?')){S.pin=null;A.save();gate()}};
+}
+
+// ---------- เพิ่ม/แก้ผู้เล่น ----------
+function pform(id){const p=S.profiles.find(x=>x.id===id),f=$('#pform');let av=p?p.avatar:A.AVATARS[S.profiles.length%A.AVATARS.length];
+ f.innerHTML='<div class="field"><span>ชื่อเล่น (แสดงในแอป)</span><input id="fn" maxlength="20" value="'+esc(p?p.name:'')+'"></div>'+
+  '<div class="field"><span>รหัสผู้เข้าร่วม (ใช้ในไฟล์ข้อมูล เช่น S01)</span><input id="fc" maxlength="24" value="'+esc(p?p.code:'')+'"'+(p?' readonly':'')+'></div>'+
+  (p?'<p class="lead">รหัสแก้ไม่ได้หลังสร้าง เพื่อไม่ให้ข้อมูลเดิมปนกัน</p>':'')+
+  '<div class="field"><span>ตัวละคร</span><div class="people" id="avs">'+A.AVATARS.map(a=>'<button class="person'+(a===av?' on':'')+'" data-a="'+a+'"><span class="av">'+a+'</span></button>').join('')+'</div></div>'+
+  '<div class="err" id="fe"></div><div class="acts2"><button class="btn2 pri" id="fs">'+(p?'บันทึก':'เพิ่มผู้เล่น')+'</button><button class="btn2" id="fx">ยกเลิก</button>'+(p?'<button class="btn2 del" id="fd">ลบผู้เล่น</button>':'')+'</div>';
+ f.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>{av=b.dataset.a;f.querySelectorAll('[data-a]').forEach(x=>x.classList.toggle('on',x===b))});
+ $('#fn').focus();$('#fx').onclick=()=>f.innerHTML='';
+ $('#fs').onclick=()=>{const n=$('#fn').value.trim(),c=$('#fc').value.trim();
+  if(!n)return $('#fe').textContent='ใส่ชื่อเล่น';if(!/^[\w.-]{1,24}$/.test(c))return $('#fe').textContent='รหัสใช้ได้เฉพาะ a-z, 0-9, _ - . (ไม่มีช่องว่าง)';
+  if(!p&&S.profiles.some(x=>x.code.toLowerCase()===c.toLowerCase()))return $('#fe').textContent='รหัสนี้มีผู้เล่นใช้แล้ว';
+  if(p){p.name=n;p.avatar=av}else{const np={id:'p'+Date.now().toString(36),name:n,code:c,avatar:av,created:new Date().toISOString()};S.profiles.push(np);if(!S.current)S.current=np.id}
+  A.save();toast(p?'บันทึกแล้ว':'เพิ่ม '+n+' แล้ว');main()};
+ if(p)$('#fd').onclick=()=>{if(!confirm('ลบผู้เล่น "'+p.name+'"?\nดาวและสติกเกอร์ของคนนี้จะหายไป ส่วนผลทดสอบที่เก็บไว้แล้วยังอยู่ในไฟล์ส่งออก'))return;
+  S.profiles=S.profiles.filter(x=>x!==p);delete S.progress[p.id];if(S.current===p.id)S.current=S.profiles[0]?.id||null;A.save();main()};
+ f.scrollIntoView({behavior:'smooth',block:'nearest'})}
+
+// ---------- ส่งออก ----------
+async function exportAll(all){
+ const out={summary:[],pvt_trials:[],pvt_events:[],sart_trials:[],sart_events:[]};
+ [...all].reverse().forEach(s=>{out.summary.push({session_uid:s.uid,participant:s.participant,name:s.name,mission:s.mission,date:s.date,ended:s.ended,completed:s.completed?1:0,...Object.fromEntries((s.summary||[]).map(([k,v])=>[k.replace(/ \(กดตอนเป็นเลข \d\)/,''),v]))});
+  (s.files||[]).forEach(f=>{const t=['pvt_trials','pvt_events','sart_trials','sart_events'].find(x=>f.name.startsWith(x));if(t)f.rows.forEach(r=>out[t].push({session_uid:s.uid,...r}))})});
+ const ts=A.stamp(),files=Object.entries(out).filter(([k,r])=>r.length).map(([k,rows])=>({name:k+'_'+ts+'.csv',rows}));
+ if(PE.native){const r=await PE.nativeSave(files.map(f=>({name:'export_'+ts+'/'+f.name,rows:f.rows})));
+  toast(r.dir==='DOCUMENTS'?'บันทึกไว้ที่ Documents/PvtSart/export_'+ts:'บันทึกไฟล์แล้ว');return PE.nativeShare(r.uris)}
+ const fl=files.map(f=>PE.file(f.name,f.rows));let ok=false;try{ok=PE.touch&&navigator.canShare&&navigator.canShare({files:fl})}catch(e){}
+ if(ok)return navigator.share({files:fl}).catch(()=>{});
+ files.forEach((f,i)=>setTimeout(()=>PE.download(f.name,f.rows),i*350));toast('กำลังดาวน์โหลด '+files.length+' ไฟล์')}
+
+unlocked&&S.pin?main():gate();
+</script></body></html>
